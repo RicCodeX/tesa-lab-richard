@@ -15,28 +15,60 @@ jobs:
 
       - name: Upload app to EC2
         uses: appleboy/scp-action@v0.1.7
+
+
+
+
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "app/*"
-          target: "/home/ubuntu/richard-app-release/"
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "app/**"
+          target: "/opt/richard-app"
 
-      # Move into place, install deps, restart service
-      - name: Deploy and restart service
+      - name: Install deps & restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
+          key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -euxo pipefail
-            sudo mkdir -p /opt/richard-app
-            sudo cp -r /home/ubuntu/richard-app-release/* /opt/richard-app/
-            sudo chown -R ubuntu:ubuntu /opt/richard-app
-            if [ -f /opt/richard-app/requirements.txt ]; then
-              # Try global install (works since service uses /usr/bin/python3)
-              sudo pip3 install -r /opt/richard-app/requirements.txt
-            fi
+            set -e
+            cd /opt/richard-app
+            ls -la
+            if [ -f requirements.txt ]; then sudo pip3 install -r requirements.txt; fi
             sudo systemctl restart richard-app
-            sudo systemctl status --no-pager richard-app
+            sudo systemctl status --no-pager richard-app || true
+
+
+
+
+
+
+
+
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USER }}
+      #     key: ${{ secrets.EC2_KEY }}
+      #     source: "app/*"
+      #     target: "/home/ubuntu/richard-app-release/"
+
+      # # Move into place, install deps, restart service
+      # - name: Deploy and restart service
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USER }}
+      #     key: ${{ secrets.EC2_KEY }}
+      #     script: |
+      #       set -euxo pipefail
+      #       sudo mkdir -p /opt/richard-app
+      #       sudo cp -r /home/ubuntu/richard-app-release/* /opt/richard-app/
+      #       sudo chown -R ubuntu:ubuntu /opt/richard-app
+      #       if [ -f /opt/richard-app/requirements.txt ]; then
+      #         # Try global install (works since service uses /usr/bin/python3)
+      #         sudo pip3 install -r /opt/richard-app/requirements.txt
+      #       fi
+      #       sudo systemctl restart richard-app
+      #       sudo systemctl status --no-pager richard-app
