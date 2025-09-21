@@ -1,69 +1,42 @@
-name: Deploy to EC2 (Richard)
+name: Richard CI/CD to EC2
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Sanity check secrets
-        run: |
-          test -n "${{ secrets.EC2_SSH_KEY }}" || (echo "EC2_SSH_KEY missing" && exit 1)
-          test -n "${{ secrets.EC2_HOST }}" || (echo "EC2_HOST missing" && exit 1)
-          test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER missing" && exit 1)
-          echo "Secrets OK"
-
-      - name: Prepare staging dir on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -eux
-            mkdir -p /opt/richard-app/_staging
-
-      - name: Upload app to staging
+      # Upload only the app folder to the EC2 home dir (staging area)
+      - name: Upload app to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "app/**"
-          target: "/opt/richard-app/_staging"
+          key: ${{ secrets.EC2_KEY }}
+          source: "app/*"
+          target: "/home/ubuntu/richard-app-release/"
 
-      - name: Promote to live & restart service
+      # Move into place, install deps, restart service
+      - name: Deploy and restart service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.EC2_KEY }}
           script: |
-            set -eux
-            # Ensure final structure
-            sudo mkdir -p /opt/richard-app/templates
-
-            # Copy new files where systemd service expects them
-            if [ -f /opt/richard-app/_staging/app.py ]; then
-              sudo cp -f /opt/richard-app/_staging/app.py /opt/richard-app/app.py
-            fi
-            if [ -f /opt/richard-app/_staging/requirements.txt ]; then
-              sudo cp -f /opt/richard-app/_staging/requirements.txt /opt/richard-app/requirements.txt
-            fi
-            if [ -d /opt/richard-app/_staging/templates ]; then
-              sudo cp -rf /opt/richard-app/_staging/templates/* /opt/richard-app/templates/
-            fi
-            sudo rm -rf /opt/richard-app/_staging
+            set -euxo pipefail
+            sudo mkdir -p /opt/richard-app
+            sudo cp -r /home/ubuntu/richard-app-release/* /opt/richard-app/
             sudo chown -R ubuntu:ubuntu /opt/richard-app
-
-            # Install deps (idempotent), show first lines for sanity, restart service
-            cd /opt/richard-app
-            if [ -f requirements.txt ]; then sudo pip3 install -r requirements.txt; fi
-            head -n 25 app.py || true
+            if [ -f /opt/richard-app/requirements.txt ]; then
+              # Try global install (works since service uses /usr/bin/python3)
+              sudo pip3 install -r /opt/richard-app/requirements.txt
+            fi
             sudo systemctl restart richard-app
-            sudo systemctl status --no-pager richard-app || true
+            sudo systemctl status --no-pager richard-app
