@@ -1,0 +1,13 @@
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*.tfvars
+*.tfvars.json
+!.terraform.lock.hcl
+Richard-key.pem
+__pycache__/
+*.pyc
+.vscode/
