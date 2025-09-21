@@ -3,7 +3,7 @@ app = Flask(__name__, template_folder="templates")
 
 @app.get("/")
 def index():
-    return render_template("index.html")  # will serve app/templates/index.html
+    return render_template("index.html")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)

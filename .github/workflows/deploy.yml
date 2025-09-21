@@ -13,29 +13,57 @@ jobs:
 
       - name: Sanity check secrets
         run: |
-          test -n "${{ secrets.EC2_SSH_KEY }}" && echo "SSH key present" || (echo "EC2_SSH_KEY missing" && exit 1)
-          test -n "${{ secrets.EC2_HOST }}" && echo "Host present" || (echo "EC2_HOST missing" && exit 1)
-          test -n "${{ secrets.EC2_USER }}" && echo "User present" || (echo "EC2_USER missing" && exit 1)
+          test -n "${{ secrets.EC2_SSH_KEY }}" || (echo "EC2_SSH_KEY missing" && exit 1)
+          test -n "${{ secrets.EC2_HOST }}" || (echo "EC2_HOST missing" && exit 1)
+          test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER missing" && exit 1)
+          echo "Secrets OK"
 
-      - name: Upload files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "app/**"
-          target: "/opt/richard-app"
-
-      - name: Install deps & restart
+      - name: Prepare staging dir on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
+            set -eux
+            mkdir -p /opt/richard-app/_staging
+
+      - name: Upload app to staging
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "app/**"
+          target: "/opt/richard-app/_staging"
+
+      - name: Promote to live & restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -eux
+            # Ensure final structure
+            sudo mkdir -p /opt/richard-app/templates
+
+            # Copy new files where systemd service expects them
+            if [ -f /opt/richard-app/_staging/app.py ]; then
+              sudo cp -f /opt/richard-app/_staging/app.py /opt/richard-app/app.py
+            fi
+            if [ -f /opt/richard-app/_staging/requirements.txt ]; then
+              sudo cp -f /opt/richard-app/_staging/requirements.txt /opt/richard-app/requirements.txt
+            fi
+            if [ -d /opt/richard-app/_staging/templates ]; then
+              sudo cp -rf /opt/richard-app/_staging/templates/* /opt/richard-app/templates/
+            fi
+            sudo rm -rf /opt/richard-app/_staging
+            sudo chown -R ubuntu:ubuntu /opt/richard-app
+
+            # Install deps (idempotent), show first lines for sanity, restart service
             cd /opt/richard-app
-            ls -la
             if [ -f requirements.txt ]; then sudo pip3 install -r requirements.txt; fi
+            head -n 25 app.py || true
             sudo systemctl restart richard-app
             sudo systemctl status --no-pager richard-app || true
