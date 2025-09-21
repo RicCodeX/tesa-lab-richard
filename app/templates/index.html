@@ -1,351 +1,60 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Richard’s Mini Arcade — RPS & Tic-Tac-Toe</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{--radius:16px;--shadow:0 10px 30px rgba(0,0,0,.10)}
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
-      background:#fafafa; color:#111;
-      min-height:100svh; display:grid; place-items:center; padding:32px;
-    }
-    .container{max-width:980px;width:100%}
-    header{
-      text-align:center;margin-bottom:20px;
-    }
-    header h1{margin:0 0 6px 0;font-weight:800;letter-spacing:.2px}
-    header p{margin:0;opacity:.7}
-    .tabs{
-      display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:22px 0;
-    }
-    .tab{
-      border:1px solid #e6e6e6;background:#fff;border-radius:999px;
-      padding:10px 16px; cursor:pointer; font-weight:600;
-      box-shadow:var(--shadow); transition:transform .04s ease;
-    }
-    .tab.active{outline:2px solid #111}
-    .tab:active{transform:scale(.98)}
-    .panels{display:grid; gap:20px}
-    .panel{display:none}
-    .panel.active{display:block}
-    .card{
-      background:#fff;border:1px solid #eee;border-radius:var(--radius);
-      padding:20px; box-shadow:var(--shadow);
-    }
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    @media (max-width:820px){.grid-2{grid-template-columns:1fr}}
-    .muted{opacity:.7}
-    /* RPS */
-    .rps-choices{display:flex; gap:12px; flex-wrap:wrap}
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      border:1px solid #e6e6e6; border-radius:12px; padding:10px 14px;
-      cursor:pointer; background:#fff; font-weight:600; box-shadow:var(--shadow);
-      transition:transform .04s ease;
-    }
-    .chip:active{transform:scale(.98)}
-    .score{
-      display:flex; gap:12px; align-items:center; flex-wrap:wrap;
-      padding:10px 12px; border:1px dashed #ddd; border-radius:12px; background:#fcfcfc;
-    }
-    .big{font-size:36px; font-weight:800}
-    .sep{width:1px;background:#eee;align-self:stretch}
-    .btn{
-      border:1px solid #e6e6e6;background:#111;color:#fff;
-      padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;
-      box-shadow:var(--shadow);
-    }
-    .btn.ghost{background:#fff;color:#111}
-    /* TTT */
-    .ttt-board{
-      display:grid; grid-template-columns:repeat(3,100px); grid-template-rows:repeat(3,100px);
-      gap:8px; justify-content:center; margin:8px auto 14px;
-    }
-    .cell{
-      background:#fcfcfc;border:1px solid #e6e6e6;border-radius:14px;
-      display:grid; place-items:center; font-size:44px; font-weight:800;
-      cursor:pointer; user-select:none; box-shadow:var(--shadow);
-      transition:transform .05s ease, background .2s ease;
-    }
-    .cell:active{transform:scale(.98)}
-    .cell.disabled{cursor:not-allowed; opacity:.6}
-    .status{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-    select{padding:8px 10px; border-radius:10px; border:1px solid #e6e6e6; background:#fff}
-    .pill{padding:6px 10px;border:1px solid #eee;border-radius:999px;background:#fcfcfc}
-    footer{margin-top:22px;text-align:center;opacity:.6;font-size:13px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Richard's Flask App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .success {
+            color: #28a745;
+            font-size: 1.2em;
+            margin: 20px 0;
+        }
+        .info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .rocket {
+            font-size: 3em;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Richard’s Mini Arcade</h1>
-      <p class="muted">Rock • Paper • Scissors &nbsp; + &nbsp; Tic-Tac-Toe (unbeatable AI)</p>
-    </header>
-
-    <div class="tabs" role="tablist" aria-label="Games">
-      <button class="tab active" data-tab="rps" role="tab" aria-selected="true" aria-controls="rps">Rock • Paper • Scissors</button>
-      <button class="tab" data-tab="ttt" role="tab" aria-selected="false" aria-controls="ttt">Tic-Tac-Toe</button>
-    </div>
-
-    <div class="panels">
-      <!-- RPS -->
-      <section id="rps" class="panel active" role="tabpanel" aria-labelledby="rps-tab">
-        <div class="card grid-2">
-          <div>
-            <h2 style="margin-top:0">Rock • Paper • Scissors</h2>
-            <p class="muted">Choose your move. First to 5 wins! (You vs CPU)</p>
-            <div class="rps-choices" aria-label="Your move">
-              <button class="chip" data-move="rock">🪨 Rock</button>
-              <button class="chip" data-move="paper">📄 Paper</button>
-              <button class="chip" data-move="scissors">✂️ Scissors</button>
-            </div>
-            <div style="height:12px"></div>
-            <div class="score">
-              <div><strong>You</strong><div id="you-score" class="big">0</div></div>
-              <div class="sep"></div>
-              <div><strong>CPU</strong><div id="cpu-score" class="big">0</div></div>
-              <div class="sep"></div>
-              <div><strong>Round</strong><div id="rps-round" class="big">1</div></div>
-              <button id="rps-reset" class="btn ghost" style="margin-left:auto">Reset</button>
-            </div>
-          </div>
-          <div>
-            <h3 style="margin:0 0 8px">Result</h3>
-            <div id="rps-last" class="pill">Make a move to start…</div>
-            <div style="height:10px"></div>
-            <ul id="rps-log" class="muted" style="margin:0;padding-left:18px;max-height:190px;overflow:auto"></ul>
-          </div>
+    <div class="container">
+        <div class="rocket">🚀</div>
+        <h1>Welcome to Richard's Flask Application</h1>
+        <div class="success">✅ CI/CD Pipeline Successfully Deployed!</div>
+        <div class="info">
+            <h3>Deployment Details:</h3>
+            <p><strong>Source:</strong> GitHub Actions</p>
+            <p><strong>Target:</strong> AWS EC2 Instance</p>
+            <p><strong>Port:</strong> 8000</p>
+            <p><strong>Framework:</strong> Flask + Python</p>
+            <p><strong>Infrastructure:</strong> Terraform</p>
         </div>
-      </section>
-
-      <!-- Tic-Tac-Toe -->
-      <section id="ttt" class="panel" role="tabpanel" aria-labelledby="ttt-tab">
-        <div class="card">
-          <h2 style="margin-top:0">Tic-Tac-Toe</h2>
-          <div class="row">
-            <label>Play as:
-              <select id="mark-select" title="Choose your mark">
-                <option value="X">X (go first)</option>
-                <option value="O">O (go second)</option>
-              </select>
-            </label>
-            <span class="pill">Wins: <span id="ttt-you">0</span></span>
-            <span class="pill">CPU: <span id="ttt-ai">0</span></span>
-            <span class="pill">Draws: <span id="ttt-draws">0</span></span>
-            <button id="ttt-reset" class="btn" style="margin-left:auto">Reset Board</button>
-          </div>
-
-          <div id="ttt-status" class="status" style="margin:10px 0">Your turn (X)</div>
-          <div class="ttt-board" id="board" role="grid" aria-label="Tic-Tac-Toe board"></div>
-        </div>
-      </section>
+        <p>This website is now serving HTML content instead of plain text! 🎉</p>
+        <p><small>Powered by Flask running on EC2</small></p>
     </div>
-
-    <footer>© Richard • TeSA Lab • Deployed via GitHub Actions</footer>
-  </div>
-
-  <script>
-    /* ============ Tabs ============ */
-    document.querySelectorAll('.tab').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('active'); b.setAttribute('aria-selected','false')});
-        document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-        btn.classList.add('active'); btn.setAttribute('aria-selected','true');
-        document.getElementById(btn.dataset.tab).classList.add('active');
-      });
-    });
-
-    /* ============ Rock • Paper • Scissors ============ */
-    (function(){
-      const moves = ['rock','paper','scissors'];
-      const beats = { rock:'scissors', paper:'rock', scissors:'paper' };
-      const youScoreEl = document.getElementById('you-score');
-      const cpuScoreEl = document.getElementById('cpu-score');
-      const roundEl = document.getElementById('rps-round');
-      const lastEl = document.getElementById('rps-last');
-      const logEl = document.getElementById('rps-log');
-      let you=0, cpu=0, round=1, gameOver=false;
-
-      function cpuPick(){ return moves[Math.floor(Math.random()*3)]; }
-
-      function entry(text){
-        const li=document.createElement('li'); li.textContent=text; logEl.prepend(li);
-      }
-
-      function updateScore(){
-        youScoreEl.textContent=you; cpuScoreEl.textContent=cpu; roundEl.textContent=round;
-        if (you>=5 || cpu>=5){ gameOver = true; lastEl.textContent = you>cpu ? "🎉 You won the match!" : "🧠 CPU won the match"; }
-      }
-
-      function play(userMove){
-        if (gameOver) return;
-        const c = cpuPick();
-        let result='draw';
-        if (userMove!==c){
-          result = (beats[userMove]===c) ? 'win' : 'lose';
-        }
-        if (result==='win'){ you++; lastEl.textContent = `You: ${icon(userMove)} beats CPU: ${icon(c)} — +1`; }
-        else if (result==='lose'){ cpu++; lastEl.textContent = `CPU: ${icon(c)} beats You: ${icon(userMove)} — +1`; }
-        else { lastEl.textContent = `Both chose ${icon(userMove)} — draw`; }
-        entry(`R${round}: You ${userMove} vs CPU ${c} → ${result.toUpperCase()}`);
-        round++; updateScore();
-      }
-
-      function icon(m){ return m==='rock'?'🪨 rock':m==='paper'?'📄 paper':'✂️ scissors'; }
-
-      document.querySelectorAll('.chip[data-move]').forEach(b=>{
-        b.addEventListener('click', ()=>play(b.dataset.move));
-      });
-
-      document.getElementById('rps-reset').addEventListener('click', ()=>{
-        you=cpu=0; round=1; gameOver=false; logEl.innerHTML='';
-        lastEl.textContent='Make a move to start…'; updateScore();
-      });
-
-      updateScore();
-    })();
-
-    /* ============ Tic-Tac-Toe (minimax AI) ============ */
-    (function(){
-      const boardEl = document.getElementById('board');
-      const statusEl = document.getElementById('ttt-status');
-      const selectEl = document.getElementById('mark-select');
-      const youEl = document.getElementById('ttt-you');
-      const aiEl = document.getElementById('ttt-ai');
-      const drawsEl = document.getElementById('ttt-draws');
-      let YOU='X', AI='O';
-      let board, gameOver;
-      let scores = {you:0, ai:0, draw:0};
-
-      function newCell(i){
-        const c = document.createElement('button');
-        c.className='cell'; c.setAttribute('role','gridcell'); c.dataset.i=i;
-        c.addEventListener('click', ()=>move(i));
-        return c;
-      }
-
-      function initBoard(){
-        board = Array(9).fill('');
-        gameOver = false;
-        boardEl.innerHTML='';
-        for (let i=0;i<9;i++) boardEl.appendChild(newCell(i));
-        updateStatus(`${turnMark()===YOU?'Your':'CPU'} turn (${turnMark()})`);
-        if (turnMark()===AI) setTimeout(aiMove, 300);
-      }
-
-      function turnMark(){
-        const xCount = board.filter(v=>v==='X').length;
-        const oCount = board.filter(v=>v==='O').length;
-        return xCount===oCount ? 'X' : 'O';
-      }
-
-      function updateStatus(text){ statusEl.textContent=text; }
-
-      function winner(b){
-        const wins = [
-          [0,1,2],[3,4,5],[6,7,8],
-          [0,3,6],[1,4,7],[2,5,8],
-          [0,4,8],[2,4,6]
-        ];
-        for (const [a,b2,c] of wins){
-          if (b[a] && b[a]===b[b2] && b[a]===b[c]) return b[a];
-        }
-        if (!b.includes('')) return 'draw';
-        return null;
-      }
-
-      function render(){
-        [...boardEl.children].forEach((cell,i)=>{
-          cell.textContent = board[i];
-          cell.classList.toggle('disabled', !!board[i] || gameOver);
-        });
-      }
-
-      function endGame(res){
-        gameOver = true;
-        if (res==='draw'){ scores.draw++; drawsEl.textContent = scores.draw; updateStatus('Draw!'); }
-        else if (res===YOU){ scores.you++; youEl.textContent = scores.you; updateStatus('🎉 You win!'); }
-        else { scores.ai++; aiEl.textContent = scores.ai; updateStatus('🧠 CPU wins!'); }
-      }
-
-      function move(i){
-        if (gameOver || board[i] || turnMark()!==YOU) return;
-        board[i]=YOU; render();
-        const w = winner(board);
-        if (w){ endGame(w); return; }
-        updateStatus('CPU thinking…');
-        setTimeout(aiMove, 200);
-      }
-
-      function aiMove(){
-        if (gameOver) return;
-        const best = bestMove(board, AI);
-        board[best] = AI; render();
-        const w = winner(board);
-        if (w){ endGame(w); return; }
-        updateStatus(`Your turn (${YOU})`);
-      }
-
-      // Minimax with simple scoring
-      function bestMove(b, player){
-        let bestScore = -Infinity, moveIdx = -1;
-        for (let i=0;i<9;i++){
-          if (b[i]===''){
-            b[i]=player;
-            const score = minimax(b, 0, false);
-            b[i]='';
-            if (score>bestScore){ bestScore=score; moveIdx=i; }
-          }
-        }
-        return moveIdx;
-      }
-
-      function minimax(b, depth, isMax){
-        const res = winner(b);
-        if (res){
-          if (res===AI) return 10 - depth;
-          if (res===YOU) return depth - 10;
-          return 0;
-        }
-        if (isMax){
-          let best = -Infinity;
-          for (let i=0;i<9;i++){
-            if (b[i]===''){
-              b[i]=AI;
-              best = Math.max(best, minimax(b, depth+1, false));
-              b[i]='';
-            }
-          }
-          return best;
-        } else {
-          let best = Infinity;
-          for (let i=0;i<9;i++){
-            if (b[i]===''){
-              b[i]=YOU;
-              best = Math.min(best, minimax(b, depth+1, true));
-              b[i]='';
-            }
-          }
-          return best;
-        }
-      }
-
-      // UI bindings
-      document.getElementById('ttt-reset').addEventListener('click', initBoard);
-      selectEl.addEventListener('change', ()=>{
-        YOU = selectEl.value;
-        AI  = (YOU==='X') ? 'O' : 'X';
-        updateStatus(`Your turn (${YOU})`);
-        initBoard();
-      });
-
-      // Initial
-      initBoard();
-    })();
-  </script>
 </body>
 </html>
